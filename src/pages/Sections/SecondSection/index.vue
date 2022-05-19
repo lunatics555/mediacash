@@ -1,3 +1,5 @@
+<!-- @format -->
+
 <template>
   <div class="flex py-10 space-x-4 lg:flex-col">
     <validation-observer
@@ -356,11 +358,21 @@ export default {
           capacite_figurines: null,
           couleur_figurines: null,
         },
+        client_id:
+          "745945640591-4obbanncdmuh6am0pn8bic7312tnkp69.apps.googleusercontent.com",
+        api_key: "AIzaSyAjxyp1n5bINUbKzym6NajJMokUNwmpDQ8",
+        discovery_doc:
+          "https://sheets.googleapis.com/$discovery/rest?version=v4",
+        tokenClient: "",
+        gapiInited: false,
+        gisInited: false,
       },
     };
   },
   mounted() {
     this.resetProduits();
+    this.gapiLoaded();
+    this.gisLoaded();
   },
   computed: {
     activeDevice() {
@@ -369,8 +381,129 @@ export default {
   },
 
   methods: {
+    /**
+     * Callback after api.js is loaded.
+     */
+    gapiLoaded() {
+      gapi.load("client", this.intializeGapiClient);
+    },
+
+    /**
+     * Callback after the API client is loaded. Loads the
+     * discovery doc to initialize the API.
+     */
+    async intializeGapiClient() {
+      await gapi.client.init({
+        apiKey: "AIzaSyDi5FSRgoMfS92BYTu-0KiqOR8KSfzjh0E",
+        discoveryDocs: [
+          "https://sheets.googleapis.com/$discovery/rest?version=v4",
+        ],
+      });
+      this.gapiInited = true;
+      this.maybeEnableButtons();
+    },
+
+    /**
+     * Callback after Google Identity Services are loaded.
+     */
+    gisLoaded() {
+      this.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id:
+          "745945640591-c76p6spbapi13gi7h8vrqc2i28m131tn.apps.googleusercontent.com",
+        scope: ["profile"],
+        callback: "", // defined later
+      });
+      this.gisInited = true;
+      this.maybeEnableButtons();
+    },
+
+    /**
+     * Enables user interaction after all libraries are loaded.
+     */
+    maybeEnableButtons() {
+      if (this.gapiInited && this.gisInited) {
+        /*         document.getElementById("authorize_button").style.visibility =
+          "visible"; */
+      }
+    },
+
+    /**
+     *  Sign in the user upon button click.
+     */
+    handleAuthClick() {
+      this.tokenClient.callback = async (resp) => {
+        if (resp.error !== undefined) {
+          throw resp;
+        }
+        /*         document.getElementById("signout_button").style.visibility = "visible";
+        document.getElementById("authorize_button").innerText = "Refresh"; */
+        await listMajors();
+      };
+
+      if (gapi.client.getToken() === null) {
+        // Prompt the user to select a Google Account and ask for consent to share their data
+        // when establishing a new session.
+        this.tokenClient.requestAccessToken({ prompt: "consent" });
+      } else {
+        // Skip display of account chooser and consent dialog for an existing session.
+        this.tokenClient.requestAccessToken({ prompt: "" });
+      }
+    },
+
+    /**
+     *  Sign out the user upon button click.
+     */
+    handleSignoutClick() {
+      const token = gapi.client.getToken();
+      if (token !== null) {
+        google.accounts.oauth2.revoke(token.access_token);
+        gapi.client.setToken("");
+        /*        document.getElementById("content").innerText = "";
+        document.getElementById("authorize_button").innerText = "Authorize";
+        document.getElementById("signout_button").style.visibility = "hidden"; */
+      }
+    },
+
+    /**
+     * Print the names and majors of students in a sample spreadsheet:
+     * https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit
+     */
+    async listMajors() {
+      let response;
+      try {
+        // Fetch first 10 files
+        response = await gapi.client.sheets.spreadsheets.values.get({
+          spreadsheetId: "1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+          range: "Class Data!A2:E",
+        });
+      } catch (err) {
+        document.getElementById("content").innerText = err.message;
+        return;
+      }
+      const range = response.result;
+      if (!range || !range.values || range.values.length == 0) {
+        document.getElementById("content").innerText = "No values found.";
+        return;
+      }
+      // Flatten to string to display
+      const output = range.values.reduce(
+        (str, row) => `${str}${row[0]}, ${row[4]}\n`,
+        "Name, Major:\n"
+      );
+      document.getElementById("content").innerText = output;
+    },
     submit(invalid) {
-      this.$router.push({ name: "ConfirmationDemand" });
+      console.log(gapi.client);
+      gapi.client.sheets.spreadsheets
+        .create({
+          properties: {
+            title: "lorem",
+          },
+        })
+        .then((response) => {
+          console.log(response);
+        });
+      /*  this.$router.push({ name: "ConfirmationDemand" }); */
       //   !invalid
       //     ? console.log("Tous les champs sont obligatoires.")
       //     : this.$router.push({ name: "ConfirmationDemand" });
