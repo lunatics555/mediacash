@@ -358,6 +358,14 @@ export default {
           capacite_figurines: null,
           couleur_figurines: null,
         },
+        client_id:
+          "745945640591-4obbanncdmuh6am0pn8bic7312tnkp69.apps.googleusercontent.com",
+        api_key: "AIzaSyAjxyp1n5bINUbKzym6NajJMokUNwmpDQ8",
+        discovery_doc:
+          "https://sheets.googleapis.com/$discovery/rest?version=v4",
+        tokenClient: "",
+        gapiInited: false,
+        gisInited: false,
       },
     };
   },
@@ -365,6 +373,12 @@ export default {
     this.resetProduits();
   },
   computed: {
+    activeDevice() {
+      return this.devices.find((device) => device.is_active);
+    },
+  },
+
+  methods: {
     submit(invalid) {
       this.$router.push({ name: "ConfirmationDemand" });
       //   !invalid
